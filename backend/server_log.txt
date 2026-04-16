@@ -1,0 +1,6 @@
+[dotenv@17.2.3] injecting env (3) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+Server running on http://localhost:5000
+A user connected: aEDnxYEKccTO7WwIAAAB
+MongoDB Connected: ac-we4bfnn-shard-00-02.cv0gdow.mongodb.net
+A user connected: kAKX0OS1yl6R2SKNAAAD
+A user connected: _90WNJlmwgz5M0w3AAAF
