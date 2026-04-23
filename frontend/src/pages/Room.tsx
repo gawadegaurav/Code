@@ -39,7 +39,7 @@ export default function RoomPage() {
         const response = await api.get(`/rooms/${roomCode}`);
         setRoom(response.data);
         
-        socket = io('http://localhost:5000');
+        socket = io(import.meta.env.VITE_API_URL);
         
         socket.on('connect', () => {
           socket.emit('join-room', response.data._id);

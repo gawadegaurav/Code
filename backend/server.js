@@ -24,11 +24,15 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "https://code-pxw8v8wpv-gaurav-s-projects-c252938b.vercel.app",
+    methods: ["GET", "POST"]
   },
 });
 
-app.use(cors());
+app.use(cors({
+  origin: "https://code-pxw8v8wpv-gaurav-s-projects-c252938b.vercel.app",
+  credentials: true
+}));
 app.use(express.json());
 
 const TEMP_DIR = "./temp";
