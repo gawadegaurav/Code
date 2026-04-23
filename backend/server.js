@@ -28,9 +28,21 @@ const io = new Server(server, {
   },
 });
 
+const allowedOrigins = [
+  "https://code-pxw8v8wpv-gaurav-s-projects-c252938b.vercel.app",
+  "https://code-o91utlo4g-gaurav-s-projects-c252938b.vercel.app",
+  "http://localhost:5173",
+];
+
 app.use(cors({
-  origin: "https://code-pxw8v8wpv-gaurav-s-projects-c252938b.vercel.app",
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
 }));
 app.use(express.json());
 
