@@ -24,8 +24,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://code-pxw8v8wpv-gaurav-s-projects-c252938b.vercel.app",
-    methods: ["GET", "POST"]
+    origin: "*",
   },
 });
 
