@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Video,
-  VideoOff,
-  Mic,
-  MicOff,
-  Monitor,
-  MonitorOff,
-  PhoneOff,
-  Maximize,
-  Minimize,
-} from "lucide-react";
+  FiVideo,
+  FiVideoOff,
+  FiMic,
+  FiMicOff,
+  FiMonitor,
+  FiPhoneOff,
+  FiMaximize2,
+  FiMinimize2
+} from "react-icons/fi";
 import { Socket } from "socket.io-client";
 
 interface VideoConferenceProps {
@@ -21,18 +20,18 @@ interface VideoConferenceProps {
 export function VideoConference({ roomId, socket }: VideoConferenceProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
 
-  const [cameraOn, setCameraOn] = useState(false);
-  const [micOn, setMicOn] = useState(false);
+  const [cameraOn, setCameraOn] = useState(() => sessionStorage.getItem(`cameraOn_${roomId}`) !== 'false');
+  const [micOn, setMicOn] = useState(() => sessionStorage.getItem(`micOn_${roomId}`) !== 'false');
   const [screenOn, setScreenOn] = useState(false);
   const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
 
-  // -------------------- SETUP --------------------
   useEffect(() => {
     if (!socket) return;
-
     const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
     pcRef.current = pc;
 
@@ -50,58 +49,89 @@ export function VideoConference({ roomId, socket }: VideoConferenceProps) {
     };
 
     socket.on("webrtc-signal", async ({ signal }) => {
+      console.log("Received signal:", signal.type);
       if (signal.type === "offer") {
         await pc.setRemoteDescription(new RTCSessionDescription(signal.content));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit("webrtc-signal", { roomId, signal: { type: "answer", content: answer } });
       } else if (signal.type === "answer") {
-        if (!pc.currentRemoteDescription) {
-          await pc.setRemoteDescription(new RTCSessionDescription(signal.content));
-        }
+        await pc.setRemoteDescription(new RTCSessionDescription(signal.content));
       } else if (signal.type === "ice") {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(signal.content));
-        } catch (e) { }
+        try { await pc.addIceCandidate(new RTCIceCandidate(signal.content)); } catch (e) { }
       }
     });
+
+    socket.on("user-joined", () => {
+      // If we are already in a call, send an offer to the new participant
+      if (localStreamRef.current) {
+        sendOffer();
+      }
+    });
+
+    // Auto-join if previously active
+    const shouldAutoJoin = sessionStorage.getItem(`videoActive_${roomId}`) === "true";
+    if (shouldAutoJoin && !localStreamRef.current) {
+      startMedia();
+    }
 
     return () => {
       pc.close();
       socket.off("webrtc-signal");
+      socket.off("user-joined");
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, [roomId, socket]);
 
-  // -------------------- MEDIA --------------------
-  const startMedia = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localStreamRef.current = stream;
-    stream.getTracks().forEach((track) => pcRef.current?.addTrack(track, stream));
-
-    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-    const offer = await pcRef.current!.createOffer();
-    await pcRef.current!.setLocalDescription(offer);
-
-    if (socket) {
-      socket.emit("webrtc-signal", { roomId, signal: { type: "offer", content: offer } });
-    }
-
-    setCameraOn(true);
-    setMicOn(true);
+  const sendOffer = async () => {
+    if (!pcRef.current || !socket) return;
+    const offer = await pcRef.current.createOffer();
+    await pcRef.current.setLocalDescription(offer);
+    socket.emit("webrtc-signal", { roomId, signal: { type: "offer", content: offer } });
   };
 
-  // -------------------- CONTROLS --------------------
+  const startMedia = async () => {
+    try {
+      if (localStreamRef.current) return;
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      
+      localStreamRef.current = stream;
+      setLocalStream(stream);
+
+      // Apply persisted states to tracks
+      stream.getVideoTracks().forEach(t => t.enabled = cameraOn);
+      stream.getAudioTracks().forEach(t => t.enabled = micOn);
+
+      stream.getTracks().forEach((track) => pcRef.current?.addTrack(track, stream));
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      await sendOffer();
+      sessionStorage.setItem(`videoActive_${roomId}`, "true");
+    } catch (err) {
+      console.error("Failed to start media:", err);
+      sessionStorage.removeItem(`videoActive_${roomId}`);
+    }
+  };
+
   const toggleCamera = async () => {
     if (!localStreamRef.current) { await startMedia(); return; }
     localStreamRef.current.getVideoTracks().forEach((t) => (t.enabled = !cameraOn));
     setCameraOn(!cameraOn);
+    sessionStorage.setItem(`cameraOn_${roomId}`, (!cameraOn).toString());
   };
 
   const toggleMic = () => {
     if (!localStreamRef.current) return;
     localStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = !micOn));
     setMicOn(!micOn);
+    sessionStorage.setItem(`micOn_${roomId}`, (!micOn).toString());
   };
 
   const toggleScreen = async () => {
@@ -110,45 +140,41 @@ export function VideoConference({ roomId, socket }: VideoConferenceProps) {
       pcRef.current?.getSenders().forEach((sender) => {
         if (sender.track?.kind === "video" && camTrack) sender.replaceTrack(camTrack);
       });
-      setScreenOn(false);
+      screenStream?.getTracks().forEach(t => t.stop());
+      setScreenStream(null);
+      setScreenOn(false); 
       return;
     }
-
-    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-    const screenTrack = screenStream.getVideoTracks()[0];
-
-    pcRef.current?.getSenders().forEach((sender) => {
-      if (sender.track?.kind === "video") sender.replaceTrack(screenTrack);
-    });
-
-    screenTrack.onended = () => toggleScreen();
-    setScreenOn(true);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const screenTrack = stream.getVideoTracks()[0];
+      pcRef.current?.getSenders().forEach((sender) => {
+        if (sender.track?.kind === "video") sender.replaceTrack(screenTrack);
+      });
+      setScreenStream(stream);
+      screenTrack.onended = () => toggleScreen();
+      setScreenOn(true);
+    } catch (err) {
+      console.error("Screen share failed:", err);
+    }
   };
 
   const endCall = () => {
+    sessionStorage.removeItem(`videoActive_${roomId}`);
     pcRef.current?.close();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     window.location.reload();
   };
 
-  // -------------------- UI --------------------
   const allStreams: ("you" | MediaStream)[] = ["you", ...remoteStreams];
 
   return (
-    <div className="relative h-full w-full bg-[#020617] text-slate-200 overflow-hidden rounded-3xl border border-white/5">
-      {/* Background Ambience */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(79,70,229,0.05),transparent_70%)]" />
-      </div>
-
-      {/* VIDEO GRID */}
-      <div className="flex items-center justify-center w-full h-full p-8 md:p-12">
+    <div className="relative h-full w-full bg-slate-50 flex flex-col">
+      {/* Video Grid */}
+      <div className="flex-1 p-6 flex items-center justify-center">
         <div
-          className={`grid gap-6 w-full h-full place-items-center max-w-6xl mx-auto`}
-          style={{
-            gridTemplateColumns: allStreams.length === 1 ? '1fr' : `repeat(${allStreams.length <= 2 ? allStreams.length : 2}, 1fr)`,
-            gridRowGap: '1.5rem',
-          }}
+          className="grid gap-4 w-full h-full max-w-5xl"
+          style={{ gridTemplateColumns: allStreams.length === 1 ? '1fr' : `repeat(${allStreams.length <= 2 ? allStreams.length : 2}, 1fr)` }}
         >
           {allStreams.map((stream, i) => {
             const isYou = stream === "you";
@@ -156,38 +182,24 @@ export function VideoConference({ roomId, socket }: VideoConferenceProps) {
             return (
               <div
                 key={i}
-                className={`relative aspect-video w-full bg-slate-900 rounded-[2.5rem] border-2 border-white/5 overflow-hidden shadow-2xl transition-all duration-500 hover:border-indigo-500/30 group ${isFullscreen ? "fixed inset-8 z-50 w-auto h-auto" : ""
-                  }`}
+                className={`relative aspect-video bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm flex items-center justify-center group ${isFullscreen ? "fixed inset-10 z-50 bg-white" : ""}`}
               >
                 <video
-                  autoPlay
-                  playsInline
-                  muted={isYou}
+                  autoPlay playsInline muted={isYou}
                   ref={(el) => {
-                    if (isYou && el) el.srcObject = localStreamRef.current!;
+                    if (isYou && el) el.srcObject = screenOn ? screenStream : localStream;
                     if (!isYou && el) el.srcObject = stream as MediaStream;
                   }}
-                  className={`w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-700`}
+                  className="w-full h-full object-cover"
                 />
-
-                {/* Overlay Details */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                <div className="absolute bottom-4 left-6 flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                    {isYou ? "YOU (NODE_0)" : `REMOTE_PEER_${i}`}
-                  </span>
+                <div className="absolute bottom-3 left-4 bg-white/80 backdrop-blur px-2 py-1 rounded text-[10px] font-bold text-slate-700 border border-slate-100 uppercase tracking-wider">
+                  {isYou ? "You" : `Participant ${i}`}
                 </div>
-
                 <button
-                  className="absolute top-4 right-6 text-white bg-black/40 backdrop-blur-md rounded-2xl p-3 border border-white/10 opacity-0 group-hover:opacity-100 hover:bg-indigo-600 transition-all"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFullscreenIndex(isFullscreen ? null : i);
-                  }}
+                  onClick={() => setFullscreenIndex(isFullscreen ? null : i)}
+                  className="absolute top-3 right-4 p-2 bg-white/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                  {isFullscreen ? <FiMinimize2 /> : <FiMaximize2 />}
                 </button>
               </div>
             );
@@ -195,46 +207,35 @@ export function VideoConference({ roomId, socket }: VideoConferenceProps) {
         </div>
       </div>
 
-      {/* CONTROLS */}
-      <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex justify-center z-50 w-full px-6">
-        <div className="flex items-center gap-6 bg-slate-900/40 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] px-10 py-4 shadow-2xl shadow-black/50">
-          <Button
-            size="lg"
-            variant="ghost"
-            onClick={toggleMic}
-            className={`rounded-full w-14 h-14 border transition-all duration-300 ${micOn ? "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10" : "bg-red-600/20 text-red-500 border-red-500/30 hover:bg-red-600/30"}`}
-          >
-            {micOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-          </Button>
-
-          <Button
-            size="lg"
-            variant="ghost"
-            onClick={toggleCamera}
-            className={`rounded-full w-14 h-14 border transition-all duration-300 ${cameraOn ? "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10" : "bg-red-600/20 text-red-500 border-red-500/30 hover:bg-red-600/30"}`}
-          >
-            {cameraOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-          </Button>
-
-          <Button
-            size="lg"
-            variant="ghost"
-            onClick={toggleScreen}
-            className={`rounded-full w-14 h-14 border transition-all duration-300 ${screenOn ? "bg-indigo-600 text-white border-indigo-500 shadow-xl shadow-indigo-600/20" : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"}`}
-          >
-            {screenOn ? <MonitorOff className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
-          </Button>
-
-          <div className="w-px h-8 bg-white/10 mx-2" />
-
-          <Button
-            size="lg"
-            onClick={endCall}
-            className="rounded-full w-14 h-14 bg-red-600 hover:bg-red-700 text-white border border-red-500 shadow-xl shadow-red-600/20 active:scale-90 transition-all"
-          >
-            <PhoneOff className="w-5 h-5" />
-          </Button>
+      {/* Picture-in-Picture Camera when Screen Sharing */}
+      {screenOn && localStream && (
+        <div className="absolute bottom-24 right-6 w-48 aspect-video bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xl z-30 group animate-in fade-in slide-in-from-right-4 transition-all hover:scale-105">
+           <video
+            autoPlay playsInline muted
+            ref={(el) => { if (el) el.srcObject = localStream; }}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute bottom-2 left-2 bg-white/80 backdrop-blur px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-700 border border-slate-100 uppercase">
+            Camera
+          </div>
         </div>
+      )}
+
+      {/* Controls */}
+      <div className="h-20 border-t bg-white flex items-center justify-center gap-4 shrink-0">
+        <Button onClick={toggleMic} variant={micOn ? "secondary" : "destructive"} className="rounded-full w-12 h-12 p-0">
+          {micOn ? <FiMic className="w-5 h-5" /> : <FiMicOff className="w-5 h-5" />}
+        </Button>
+        <Button onClick={toggleCamera} variant={cameraOn ? "secondary" : "destructive"} className="rounded-full w-12 h-12 p-0">
+          {cameraOn ? <FiVideo className="w-5 h-5" /> : <FiVideoOff className="w-5 h-5" />}
+        </Button>
+        <Button onClick={toggleScreen} variant={screenOn ? "default" : "secondary"} className="rounded-full w-12 h-12 p-0">
+          <FiMonitor className="w-5 h-5" />
+        </Button>
+        <div className="w-px h-8 bg-slate-200 mx-2" />
+        <Button onClick={endCall} variant="destructive" className="rounded-full w-12 h-12 p-0">
+          <FiPhoneOff className="w-5 h-5" />
+        </Button>
       </div>
     </div>
   );

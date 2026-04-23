@@ -55,3 +55,26 @@ export const getUserRooms = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// @desc    Delete a room
+// @route   DELETE /api/rooms/:id
+// @access  Private
+export const deleteRoom = async (req, res) => {
+    try {
+        const room = await Room.findById(req.params.id);
+
+        if (!room) {
+            return res.status(404).json({ message: 'Room not found' });
+        }
+
+        // Check if user is the creator
+        if (room.created_by.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized to delete this room' });
+        }
+
+        await room.deleteOne();
+        res.json({ message: 'Room removed' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

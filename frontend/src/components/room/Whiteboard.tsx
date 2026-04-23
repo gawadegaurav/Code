@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
-import { Button } from '@/components/ui/button';
-import { PenTool, Eraser, Trash2 } from 'lucide-react';
+import { FiEdit3, FiTrash2 } from 'react-icons/fi';
+import { LuEraser } from 'react-icons/lu';
 
 interface WhiteboardProps {
   roomId: string;
@@ -12,7 +12,7 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen');
-  const [color] = useState('#14b8a6');
+  const [color] = useState('#2563eb'); // blue-600
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
   const getCtx = useCallback(() => {
@@ -28,7 +28,7 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
     ctx.lineTo(x, y);
-    ctx.strokeStyle = drawTool === 'eraser' ? 'hsl(222 47% 8%)' : drawColor;
+    ctx.strokeStyle = drawTool === 'eraser' ? '#ffffff' : drawColor;
     ctx.lineWidth = drawTool === 'eraser' ? 20 : 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -42,14 +42,13 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
     const resizeCanvas = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
-
       const rect = parent.getBoundingClientRect();
       canvas.width = rect.width;
-      canvas.height = rect.height - 40;
-
+      canvas.height = rect.height;
+      
       const ctx = getCtx();
       if (ctx) {
-        ctx.fillStyle = 'hsl(222 47% 8%)';
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     };
@@ -61,12 +60,10 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
       socket.on('draw-data', (data) => {
         drawOnCanvas(data.x, data.y, data.lastX, data.lastY, data.color, data.tool);
       });
-
       socket.on('clear-whiteboard', () => {
-        const canvas = canvasRef.current;
         const ctx = getCtx();
-        if (canvas && ctx) {
-          ctx.fillStyle = 'hsl(222 47% 8%)';
+        if (ctx && canvas) {
+          ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
       });
@@ -84,19 +81,11 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
   const getPos = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-
     const rect = canvas.getBoundingClientRect();
-
     if ('touches' in e) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top,
-      };
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
     }
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
@@ -106,26 +95,14 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing) return;
-
     const pos = getPos(e);
     const lastPoint = lastPointRef.current;
-
     if (lastPoint) {
       drawOnCanvas(pos.x, pos.y, lastPoint.x, lastPoint.y, color, tool);
-
       if (socket) {
-        socket.emit('draw', {
-          roomId,
-          x: pos.x,
-          y: pos.y,
-          lastX: lastPoint.x,
-          lastY: lastPoint.y,
-          color,
-          tool
-        });
+        socket.emit('draw', { roomId, x: pos.x, y: pos.y, lastX: lastPoint.x, lastY: lastPoint.y, color, tool });
       }
     }
-
     lastPointRef.current = pos;
   };
 
@@ -134,55 +111,35 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
     lastPointRef.current = null;
   };
 
-
-
   const clearCanvas = () => {
-    const canvas = canvasRef.current;
     const ctx = getCtx();
-    if (!canvas || !ctx) return;
-
-    ctx.fillStyle = '#020617';
+    const canvas = canvasRef.current;
+    if (!ctx || !canvas) return;
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    if (socket) {
-      socket.emit('clear-whiteboard', roomId);
-    }
+    if (socket) socket.emit('clear-whiteboard', roomId);
   };
 
-
   return (
-    <div className="flex flex-col h-full w-full bg-slate-950/40 backdrop-blur-3xl overflow-hidden">
-      <div className="h-10 flex items-center justify-between px-4 bg-slate-900/40 border-b border-white/5">
+    <div className="flex flex-col h-full bg-white">
+      <div className="h-10 border-b px-4 flex items-center justify-between bg-slate-50">
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+          <FiEdit3 /> Canvas
+        </span>
         <div className="flex items-center gap-2">
-          <PenTool className="w-3.5 h-3.5 text-blue-400" />
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visual Canvas</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate-950/50 p-1 rounded-lg border border-white/5">
-            <button
-              onClick={() => setTool('pen')}
-              className={`p-1.5 rounded-md transition-all ${tool === 'pen' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              <PenTool className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setTool('eraser')}
-              className={`p-1.5 rounded-md transition-all ${tool === 'eraser' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              <Eraser className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <button
-            onClick={clearCanvas}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
+          <button onClick={() => setTool('pen')} className={`p-1.5 rounded ${tool === 'pen' ? 'text-blue-600 bg-white shadow-sm' : 'text-slate-400'}`}>
+            <FiEdit3 className="w-4 h-4" />
+          </button>
+          <button onClick={() => setTool('eraser')} className={`p-1.5 rounded ${tool === 'eraser' ? 'text-blue-600 bg-white shadow-sm' : 'text-slate-400'}`}>
+            <LuEraser className="w-4 h-4" />
+          </button>
+          <div className="w-px h-4 bg-slate-200 mx-1" />
+          <button onClick={clearCanvas} className="p-1.5 text-slate-400 hover:text-red-600">
+            <FiTrash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
-
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 relative bg-white">
         <canvas
           ref={canvasRef}
           className="cursor-crosshair touch-none"
@@ -194,10 +151,6 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
         />
-        <div className="absolute bottom-4 left-4 flex flex-col gap-1">
-          <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">Active Tool</span>
-          <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{tool}</span>
-        </div>
       </div>
     </div>
   );
