@@ -1,109 +1,176 @@
 import { Link } from 'react-router-dom';
-import { FiCode, FiUsers, FiVideo, FiArrowRight, FiZap, FiGlobe, FiLock } from 'react-icons/fi';
+import { FiCode, FiUsers, FiVideo, FiArrowRight, FiZap, FiGlobe, FiLock, FiCpu } from 'react-icons/fi';
+import { motion } from 'framer-motion';
 
 export default function Index() {
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b bg-white transition-all sticky top-0 z-50">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FiCode className="w-6 h-6 text-blue-600" />
-            <span className="text-xl font-bold tracking-tight text-slate-900">CodeCollab</span>
-          </div>
+    <div className="min-h-screen bg-cyber-dark text-cyber-text-primary overflow-hidden selection:bg-cyber-cyan selection:text-cyber-dark relative">
+      {/* Background Effects */}
+      <div className="fixed inset-0 z-0 bg-cyber-gradient opacity-90"></div>
+      <div className="fixed inset-0 z-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
+      <div className="fixed inset-0 z-0 scanlines opacity-30"></div>
+      
+      {/* Glow Orbs */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-cyber-purple/20 blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cyber-cyan/20 blur-[120px] pointer-events-none"></div>
 
-          <div className="flex items-center gap-4">
-            <Link to="/auth">
-              <button className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2">
-                Sign In
-              </button>
-            </Link>
-            <Link to="/auth">
-              <button className="bg-blue-600 text-white text-sm font-semibold px-5 py-2 rounded-md hover:bg-blue-700 transition-colors">
-                Get Started
-              </button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <main className="container mx-auto px-6 py-20">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold mb-6">
-            <FiZap className="w-3 h-3" />
-            <span>Real-Time Collaboration</span>
-          </div>
-
-          <h1 className="text-4xl md:text-6xl font-bold text-slate-900 mb-6 tracking-tight">
-            Code Together. Clear & Simple.
-          </h1>
-
-          <p className="text-lg text-slate-600 mb-10 max-w-2xl mx-auto">
-            A real-time coding environment for modern teams. Collaborate on code, video call, and chat in one clean space.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/auth">
-              <button className="bg-blue-600 text-white font-bold px-8 py-3 rounded-md flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors">
-                Start Collaborating <FiArrowRight />
-              </button>
-            </Link>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-8 mt-12 text-slate-500 text-sm">
-            <div className="flex items-center gap-2">
-              <FiZap className="text-blue-500" /> Sub-100ms sync
-            </div>
-            <div className="flex items-center gap-2">
-              <FiGlobe className="text-blue-500" /> 10+ Languages
-            </div>
-            <div className="flex items-center gap-2">
-              <FiLock className="text-blue-500" /> Encrypted
-            </div>
-          </div>
-        </div>
-
-        {/* Feature Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mt-24 max-w-5xl mx-auto">
-          {[
-            {
-              icon: FiCode,
-              title: 'Live Coding',
-              desc: 'Real-time collaborative editor with conflict-free synchronization.',
-              color: 'text-blue-600',
-              bg: 'bg-blue-50',
-            },
-            {
-              icon: FiVideo,
-              title: 'Video Calls',
-              desc: 'Built-in high-quality video conferencing for clear communication.',
-              color: 'text-indigo-600',
-              bg: 'bg-indigo-50',
-            },
-            {
-              icon: FiUsers,
-              title: 'Team Chat',
-              desc: 'Instant messaging to coordinate with your team in real-time.',
-              color: 'text-green-600',
-              bg: 'bg-green-50',
-            },
-          ].map((feature) => (
-            <div key={feature.title} className="p-8 border rounded-xl hover:shadow-md transition-shadow">
-              <div className={`w-12 h-12 rounded-lg ${feature.bg} flex items-center justify-center mb-6`}>
-                <feature.icon className={`w-6 h-6 ${feature.color}`} />
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="border-b border-white/5 glassmorphism sticky top-0 z-50">
+          <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3"
+            >
+              <div className="relative flex items-center justify-center w-8 h-8 rounded bg-cyber-darker border border-cyber-cyan shadow-[0_0_10px_rgba(0,245,255,0.4)]">
+                <FiCode className="w-5 h-5 text-cyber-cyan" />
               </div>
-              <h3 className="font-bold text-slate-900 mb-2">{feature.title}</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">{feature.desc}</p>
-            </div>
-          ))}
-        </div>
-      </main>
+              <span className="text-xl font-bold tracking-widest text-white uppercase neon-text-cyan">Spark OS</span>
+            </motion.div>
 
-      {/* Footer */}
-      <footer className="border-t py-12 text-center text-slate-500 text-sm">
-        <p>© 2025 CodeCollab · Dev collaboration made simple.</p>
-      </footer>
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-6"
+            >
+              <Link to="/auth">
+                <button className="text-sm font-medium text-cyber-text-secondary hover:text-cyber-cyan transition-colors uppercase tracking-wider">
+                  Access Terminal
+                </button>
+              </Link>
+              <Link to="/auth">
+                <button className="btn-cyber-primary text-sm uppercase tracking-wider">
+                  Initialize
+                </button>
+              </Link>
+            </motion.div>
+          </div>
+        </header>
+
+        {/* Hero */}
+        <main className="container mx-auto px-6 py-24 md:py-32">
+          <div className="max-w-5xl mx-auto text-center relative">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyber-pink/50 bg-cyber-pink/10 text-cyber-pink text-xs font-bold uppercase tracking-widest mb-8"
+            >
+              <div className="w-2 h-2 rounded-full bg-cyber-pink animate-pulse" />
+              <span>System Online v2.0.77</span>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight uppercase leading-tight">
+                Collaborative Coding <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan to-cyber-purple drop-shadow-[0_0_15px_rgba(0,245,255,0.5)]">
+                  Beyond Reality
+                </span>
+              </h1>
+            </motion.div>
+
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-lg md:text-xl text-cyber-text-secondary mb-12 max-w-2xl mx-auto font-light"
+            >
+              Enter the next generation of developer workspaces. Real-time synchronization, AI augmentation, and holographic telepresence in one integrated environment.
+            </motion.p>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="flex flex-col sm:flex-row gap-6 justify-center"
+            >
+              <Link to="/auth">
+                <button className="btn-cyber h-12 px-8 text-base flex items-center justify-center gap-3 w-full sm:w-auto">
+                  Jack In <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              </Link>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="flex flex-wrap justify-center gap-8 mt-16 text-cyber-cyan text-sm uppercase tracking-widest font-bold"
+            >
+              <div className="flex items-center gap-2">
+                <FiZap className="text-cyber-lime" /> Zero Latency
+              </div>
+              <div className="flex items-center gap-2">
+                <FiCpu className="text-cyber-purple" /> Neural AI
+              </div>
+              <div className="flex items-center gap-2">
+                <FiLock className="text-cyber-pink" /> Quantum Secure
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Feature Grid */}
+          <div className="grid md:grid-cols-3 gap-8 mt-32 max-w-6xl mx-auto">
+            {[
+              {
+                icon: FiCode,
+                title: 'Cyber Workspace',
+                desc: 'Conflict-free synchronization in a dark synthwave Monaco editor interface.',
+                color: 'text-cyber-cyan',
+                borderColor: 'border-cyber-cyan/30',
+                glow: 'group-hover:shadow-[0_0_30px_rgba(0,245,255,0.2)]',
+              },
+              {
+                icon: FiCpu,
+                title: 'AI Neural Net',
+                desc: 'Advanced algorithmic assistance and automated code generation via holographic UI.',
+                color: 'text-cyber-purple',
+                borderColor: 'border-cyber-purple/30',
+                glow: 'group-hover:shadow-[0_0_30px_rgba(176,38,255,0.2)]',
+              },
+              {
+                icon: FiVideo,
+                title: 'Holo-Conference',
+                desc: 'High-fidelity audio-visual communication arrays with real-time HUD overlays.',
+                color: 'text-cyber-pink',
+                borderColor: 'border-cyber-pink/30',
+                glow: 'group-hover:shadow-[0_0_30px_rgba(255,0,140,0.2)]',
+              },
+            ].map((feature, i) => (
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.2 }}
+                key={feature.title} 
+                className={`group relative p-8 glassmorphism border ${feature.borderColor} rounded-xl transition-all duration-500 hover:-translate-y-2 ${feature.glow}`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none" />
+                <div className={`w-14 h-14 rounded-lg bg-cyber-dark border ${feature.borderColor} flex items-center justify-center mb-6 relative overflow-hidden`}>
+                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <feature.icon className={`w-7 h-7 ${feature.color}`} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3 tracking-wide">{feature.title}</h3>
+                <p className="text-cyber-text-secondary leading-relaxed">{feature.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="border-t border-white/5 py-8 mt-20 glassmorphism relative z-10">
+          <div className="container mx-auto text-center">
+            <p className="text-cyber-text-muted text-xs uppercase tracking-widest font-bold">
+              © 2077 Spark OS Neural Network · Access Granted
+            </p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

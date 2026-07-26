@@ -70,7 +70,7 @@ const runners = {
     ext: "java",
     compile: (file) => ["javac", `"${file}"`],
     cmd: () => "java",
-    args: (file) => ["-cp", TEMP_DIR, "Main"]
+    args: (file, runDir) => ["-cp", runDir || TEMP_DIR, "Main"]
   },
 };
 
@@ -86,6 +86,18 @@ const executeSpawn = (command, args, inputStr) => {
 
     try {
       const child = spawn(command, args, { shell: true });
+
+      // Add a 5 second safety timeout to prevent infinite loops
+      timer = setTimeout(() => {
+        try {
+          child.kill();
+        } catch (e) {}
+        resolve({
+          status: "TIMEOUT",
+          output: "Execution timed out (5s limit)",
+          time: Date.now() - startTime
+        });
+      }, 5000);
 
       child.stdout.on("data", (data) => {
         stdout += data.toString();
@@ -119,7 +131,6 @@ const executeSpawn = (command, args, inputStr) => {
         resolve({ status: "SYSTEM_ERROR", output: err.message, time: Date.now() - startTime });
       });
 
-
       child.stdin.on("error", (err) => {
         console.error("stdin error:", err);
       });
@@ -130,6 +141,7 @@ const executeSpawn = (command, args, inputStr) => {
       child.stdin.end();
 
     } catch (err) {
+      if (timer) clearTimeout(timer);
       resolve({ status: "SYSTEM_ERROR", output: err.message, time: Date.now() - startTime });
     }
   });
@@ -142,8 +154,12 @@ app.post("/api/run", async (req, res) => {
   if (!runners[language]) return res.status(400).json({ status: "ERROR", output: "Unsupported language" });
 
   const runner = runners[language];
+  const runId = `run_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const runDir = path.resolve(TEMP_DIR, runId);
+  fs.mkdirSync(runDir, { recursive: true });
+
   const filename = language === "java" ? "Main.java" : `code_${Date.now()}.${runner.ext}`;
-  const filePath = path.join(TEMP_DIR, filename);
+  const filePath = path.join(runDir, filename);
   fs.writeFileSync(filePath, code);
 
   try {
@@ -160,22 +176,31 @@ app.post("/api/run", async (req, res) => {
       }
     }
 
-    const execResult = await executeSpawn(runner.cmd(filePath), runner.args(filePath), input);
+    const execResult = await executeSpawn(runner.cmd(filePath), runner.args(filePath, runDir), input);
     res.json(execResult);
 
   } catch (err) {
     res.json({ status: "SYSTEM_ERROR", output: err.message });
   } finally {
-    // Optional: Clean up temp files here if needed, but keeping for now for debugging
+    try {
+      fs.rmSync(runDir, { recursive: true, force: true });
+    } catch (cleanupErr) {
+      console.error("Cleanup error in /api/run:", cleanupErr.message);
+    }
   }
 });
 
 // ------------------- AI Assistant Route -------------------
 app.post("/api/ai", async (req, res) => {
-  const { prompt } = req.body;
+  const { prompt, code, language } = req.body;
 
   if (!process.env.OPENROUTER_API_KEY) {
     return res.status(500).json({ error: "OpenRouter API key not set in .env" });
+  }
+
+  let fullPrompt = prompt;
+  if (code) {
+    fullPrompt = `The user is writing ${language || 'code'} in the editor. Here is the current code context:\n\`\`\`${language || ''}\n${code}\n\`\`\`\n\nUser request: ${prompt}`;
   }
 
   try {
@@ -183,7 +208,7 @@ app.post("/api/ai", async (req, res) => {
       "https://openrouter.ai/api/v1/chat/completions",
       {
         model: "openai/gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: fullPrompt }],
       },
       {
         headers: {
@@ -223,6 +248,10 @@ io.on("connection", (socket) => {
     // Get updated member count for the room
     const memberCount = io.sockets.adapter.rooms.get(roomId)?.size || 0;
     io.to(roomId).emit("room-members", memberCount);
+    
+    // Send list of other users in the room to the new user
+    const existingUsers = Array.from(io.sockets.adapter.rooms.get(roomId) || []).filter(id => id !== socket.id);
+    socket.emit("all-users", existingUsers);
     
     socket.to(roomId).emit("user-joined", { userId: socket.id });
   });
@@ -272,8 +301,12 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("clear-whiteboard");
   });
 
-  socket.on("webrtc-signal", ({ roomId, signal }) => {
-    socket.to(roomId).emit("webrtc-signal", { signal });
+  socket.on("webrtc-signal", ({ roomId, signal, target }) => {
+    if (target) {
+      socket.to(target).emit("webrtc-signal", { signal, from: socket.id });
+    } else {
+      socket.to(roomId).emit("webrtc-signal", { signal, from: socket.id });
+    }
   });
 
   socket.on("run-code", async ({ language, code }) => {
@@ -282,8 +315,12 @@ io.on("connection", (socket) => {
     }
 
     const runner = runners[language];
+    const runId = `run_${socket.id}_${Date.now()}`;
+    const runDir = path.resolve(TEMP_DIR, runId);
+    fs.mkdirSync(runDir, { recursive: true });
+
     const filename = language === "java" ? "Main.java" : `code_${Date.now()}.${runner.ext}`;
-    const filePath = path.join(TEMP_DIR, filename);
+    const filePath = path.join(runDir, filename);
     fs.writeFileSync(filePath, code);
 
     try {
@@ -294,14 +331,15 @@ io.on("connection", (socket) => {
 
         if (compileResult.status !== 0) {
           const errorMsg = compileResult.stderr?.toString() || compileResult.stdout?.toString() || "Compilation failed";
+          try { fs.rmSync(runDir, { recursive: true, force: true }); } catch (e) {}
           return socket.emit("terminal-output", `\x1b[31m${errorMsg}\x1b[0m\r\n`);
         }
       }
 
       socket.emit("terminal-output", "\x1b[32mRunning...\x1b[0m\r\n");
 
-      const child = spawn(runner.cmd(filePath), runner.args(filePath), { shell: true });
-      activeProcesses.set(socket.id, child);
+      const child = spawn(runner.cmd(filePath), runner.args(filePath, runDir), { shell: true });
+      activeProcesses.set(socket.id, { child, runDir });
 
       child.stdout.on("data", (data) => {
         socket.emit("terminal-output", data.toString().replace(/\n/g, "\r\n"));
@@ -314,32 +352,36 @@ io.on("connection", (socket) => {
       child.on("close", (code) => {
         socket.emit("terminal-output", `\r\n\x1b[36mProcess exited with code ${code}\x1b[0m\r\n`);
         activeProcesses.delete(socket.id);
+        try { fs.rmSync(runDir, { recursive: true, force: true }); } catch (e) {}
       });
 
       child.on("error", (err) => {
         socket.emit("terminal-output", `\r\n\x1b[31mError: ${err.message}\x1b[0m\r\n`);
         activeProcesses.delete(socket.id);
+        try { fs.rmSync(runDir, { recursive: true, force: true }); } catch (e) {}
       });
-
 
     } catch (err) {
       socket.emit("terminal-output", `\r\n\x1b[31mSystem Error: ${err.message}\x1b[0m\r\n`);
+      try { fs.rmSync(runDir, { recursive: true, force: true }); } catch (e) {}
     }
   });
 
   socket.on("stop-code", () => {
-    const child = activeProcesses.get(socket.id);
-    if (child) {
+    const procInfo = activeProcesses.get(socket.id);
+    if (procInfo) {
+      const { child, runDir } = procInfo;
       child.kill();
       socket.emit("terminal-output", "\r\n\x1b[31mProcess terminated by user\x1b[0m\r\n");
       activeProcesses.delete(socket.id);
+      try { fs.rmSync(runDir, { recursive: true, force: true }); } catch (e) {}
     }
   });
 
   socket.on("terminal-input", (data) => {
-    const child = activeProcesses.get(socket.id);
-    if (child && child.stdin.writable) {
-      child.stdin.write(data.replace(/\r/g, "\n"));
+    const procInfo = activeProcesses.get(socket.id);
+    if (procInfo && procInfo.child && procInfo.child.stdin.writable) {
+      procInfo.child.stdin.write(data.replace(/\r/g, "\n"));
     }
   });
 
@@ -347,6 +389,7 @@ io.on("connection", (socket) => {
     // Notify rooms that this user is leaving
     for (const roomId of socket.rooms) {
       if (roomId !== socket.id) {
+        io.to(roomId).emit("user-left", { userId: socket.id });
         // We use nextTick to calculate the count AFTER the user has left
         process.nextTick(() => {
           const memberCount = io.sockets.adapter.rooms.get(roomId)?.size || 0;
@@ -355,8 +398,12 @@ io.on("connection", (socket) => {
       }
     }
     
-    const child = activeProcesses.get(socket.id);
-    if (child) child.kill();
+    const procInfo = activeProcesses.get(socket.id);
+    if (procInfo) {
+      const { child, runDir } = procInfo;
+      child.kill();
+      try { fs.rmSync(runDir, { recursive: true, force: true }); } catch (e) {}
+    }
     activeProcesses.delete(socket.id);
   });
 

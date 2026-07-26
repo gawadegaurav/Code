@@ -35,7 +35,7 @@ export const getSnapshot = async (req, res) => {
         const snapshot = await CodeSnapshot.findOne({ room_id: req.params.roomId });
 
         if (!snapshot) {
-            return res.status(404).json({ message: 'Snapshot not found' });
+            return res.json({ content: null, language: null });
         }
 
         res.json(snapshot);

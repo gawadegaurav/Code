@@ -61,19 +61,33 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        cyan: {
-          400: "hsl(188 86% 53%)",
-          500: "hsl(188 86% 43%)",
-        },
-        teal: {
-          400: "hsl(174 72% 56%)",
-          500: "hsl(174 72% 46%)",
-        },
+        /* Cyberpunk Colors */
+        cyber: {
+          cyan: "#00F5FF",
+          purple: "#B026FF",
+          pink: "#FF008C",
+          blue: "#3B82F6",
+          lime: "#39FF14",
+          dark: "#050816",
+          darker: "#0B1020",
+          panel: "#111827",
+          text: {
+            primary: "#E5F6FF",
+            secondary: "#94A3B8",
+            muted: "#64748B",
+          }
+        }
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        'neon-cyan': '0 0 10px rgba(0, 245, 255, 0.4), 0 0 20px rgba(0, 245, 255, 0.2)',
+        'neon-purple': '0 0 10px rgba(176, 38, 255, 0.4), 0 0 20px rgba(176, 38, 255, 0.2)',
+        'neon-pink': '0 0 10px rgba(255, 0, 140, 0.4), 0 0 20px rgba(255, 0, 140, 0.2)',
+        'neon-lime': '0 0 10px rgba(57, 255, 20, 0.4), 0 0 20px rgba(57, 255, 20, 0.2)',
       },
       keyframes: {
         "accordion-down": {
@@ -96,6 +110,18 @@ export default {
           from: { opacity: "0", transform: "scale(0.95)" },
           to: { opacity: "1", transform: "scale(1)" },
         },
+        "pulse-glow": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
+        },
+        "scanline": {
+          "0%": { transform: "translateY(-100%)" },
+          "100%": { transform: "translateY(100vh)" },
+        },
+        "gradient-x": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -103,7 +129,14 @@ export default {
         "fade-in": "fade-in 0.5s ease-out forwards",
         "slide-in-left": "slide-in-left 0.4s ease-out forwards",
         "scale-in": "scale-in 0.3s ease-out forwards",
+        "pulse-glow": "pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "scanline": "scanline 8s linear infinite",
+        "gradient-x": "gradient-x 15s ease infinite",
       },
+      backgroundImage: {
+        'cyber-gradient': 'linear-gradient(to right, #050816, #0B1020, #111827)',
+        'neon-gradient': 'linear-gradient(to right, #00F5FF, #B026FF)',
+      }
     },
   },
   plugins: [require("tailwindcss-animate")],

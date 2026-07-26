@@ -6,100 +6,122 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --background: 231 63% 5%;
+    --foreground: 200 100% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 226 49% 10%;
+    --card-foreground: 200 100% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 226 49% 10%;
+    --popover-foreground: 200 100% 95%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 188 100% 50%;
+    --primary-foreground: 231 63% 5%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11.2%;
+    --secondary: 279 100% 57%;
+    --secondary-foreground: 200 100% 95%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 226 49% 15%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222 47% 11.2%;
+    --accent: 327 100% 50%;
+    --accent-foreground: 200 100% 95%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 200 100% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221 83% 53%;
+    --border: 226 49% 20%;
+    --input: 226 49% 15%;
+    --ring: 188 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
+  
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-cyber-dark text-cyber-text-primary antialiased;
     font-family: 'Inter', system-ui, sans-serif;
   }
 }
 
-/* Simplified Layout Classes */
-.simple-card {
-  @apply bg-card border shadow-sm rounded-lg p-6 transition-all;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.simple-card:hover {
-  @apply shadow-md border-primary/20;
+::-webkit-scrollbar-track {
+  background: #0B1020;
 }
 
-.input-simple {
-  @apply bg-background border h-10 px-3 rounded-md focus:ring-2 focus:ring-primary/20 outline-none transition-all;
+::-webkit-scrollbar-thumb {
+  background: #111827;
+  border-radius: 4px;
+  border: 1px solid #00F5FF33;
 }
 
-.btn-simple {
-  @apply bg-primary text-primary-foreground h-10 px-4 rounded-md font-medium hover:bg-primary/90 transition-all disabled:opacity-50;
+::-webkit-scrollbar-thumb:hover {
+  background: #00F5FF55;
 }
 
-.btn-outline-simple {
-  @apply bg-background border text-foreground h-10 px-4 rounded-md font-medium hover:bg-secondary transition-all;
+/* Cyberpunk Utilities */
+.glassmorphism {
+  @apply bg-cyber-panel/40 backdrop-blur-md border border-white/5;
 }
 
-/* Remove fancy animations/backgrounds */
-.aurora-bg, .mesh-grid, .orb, .btn-glow, .badge-glow, .text-aurora {
-  display: none !important;
+.neon-border {
+  @apply border border-cyber-cyan shadow-[0_0_10px_rgba(0,245,255,0.4)];
+}
+
+.neon-border-purple {
+  @apply border border-cyber-purple shadow-[0_0_10px_rgba(176,38,255,0.4)];
+}
+
+.neon-border-pink {
+  @apply border border-cyber-pink shadow-[0_0_10px_rgba(255,0,140,0.4)];
+}
+
+.neon-text-cyan {
+  text-shadow: 0 0 10px rgba(0, 245, 255, 0.6);
+}
+
+.scanlines {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanlines::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 50;
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+
+.animated-gradient-bg {
+  background: linear-gradient(-45deg, #050816, #0B1020, #111827, #1a0b2e);
+  background-size: 400% 400%;
+  animation: gradient-x 15s ease infinite;
+}
+
+/* Base button and input resets for theme */
+.btn-cyber {
+  @apply bg-cyber-darker border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-cyber-dark transition-all duration-300 font-bold px-6 py-2 rounded-md shadow-[0_0_10px_rgba(0,245,255,0.2)] hover:shadow-[0_0_20px_rgba(0,245,255,0.6)];
+}
+
+.btn-cyber-primary {
+  @apply bg-cyber-cyan text-cyber-dark font-bold px-6 py-2 rounded-md hover:bg-white transition-all duration-300 shadow-[0_0_15px_rgba(0,245,255,0.5)];
+}
+
+.input-cyber {
+  @apply bg-cyber-panel/50 border border-cyber-cyan/30 text-cyber-text-primary h-10 px-4 rounded-md focus:outline-none focus:border-cyber-cyan focus:shadow-[0_0_10px_rgba(0,245,255,0.3)] transition-all placeholder:text-cyber-text-muted;
 }

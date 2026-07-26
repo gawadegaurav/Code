@@ -5,7 +5,7 @@ import api from '@/lib/api';
 import { io, Socket } from 'socket.io-client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { FiCode, FiVideo, FiArrowLeft, FiCopy, FiUsers, FiMonitor } from 'react-icons/fi';
+import { FiCode, FiVideo, FiArrowLeft, FiCopy, FiUsers, FiMonitor, FiTerminal, FiCpu } from 'react-icons/fi';
 import { CodeEditor } from '@/components/room/CodeEditor';
 import { ChatPanel } from '@/components/room/ChatPanel';
 import { Whiteboard } from '@/components/room/Whiteboard';
@@ -32,6 +32,9 @@ export default function RoomPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [currentCode, setCurrentCode] = useState('');
+  const [currentLanguage, setCurrentLanguage] = useState('javascript');
+
   useEffect(() => {
     if (!roomCode || !user) return;
     const fetchRoom = async () => {
@@ -39,8 +42,8 @@ export default function RoomPage() {
         const response = await api.get(`/rooms/${roomCode}`);
         setRoom(response.data);
         
-        socket = io(import.meta.env.VITE_API_URL);
-        
+        const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://127.0.0.1:5000';
+        socket = io(socketUrl);
         socket.on('connect', () => {
           socket.emit('join-room', response.data._id);
         });
@@ -51,7 +54,7 @@ export default function RoomPage() {
 
         setLoading(false);
       } catch (error: any) {
-        toast.error('Room not found or unauthorized');
+        toast.error('Node not found or unauthorized access');
         navigate('/dashboard');
       }
     };
@@ -67,15 +70,18 @@ export default function RoomPage() {
   const copyRoomCode = () => {
     if (room?.code) {
       navigator.clipboard.writeText(room.code);
-      toast.success('Room code copied!');
+      toast.success('Access code copied to clipboard');
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-        <h2 className="text-lg font-bold text-slate-900">Joining workspace...</h2>
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-cyber-dark text-cyber-cyan">
+        <div className="relative w-16 h-16 flex items-center justify-center mb-6">
+          <div className="absolute inset-0 border-4 border-cyber-cyan/20 border-t-cyber-cyan rounded-full animate-spin" />
+          <FiTerminal className="w-6 h-6 animate-pulse" />
+        </div>
+        <h2 className="text-sm font-bold uppercase tracking-widest text-cyber-cyan">Establishing Connection...</h2>
       </div>
     );
   }
@@ -83,78 +89,83 @@ export default function RoomPage() {
   if (!room) return null;
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-white">
-      {/* Header */}
-      <header className="h-14 border-b flex items-center px-4 justify-between shrink-0 bg-white z-50">
-        <div className="flex items-center gap-4">
-          <Link to="/dashboard">
-            <button className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
-              <FiArrowLeft className="w-5 h-5" />
-            </button>
-          </Link>
-          <div className="w-px h-6 bg-slate-200" />
-          <div className="flex items-center gap-3">
-            <FiCode className="text-blue-600 w-5 h-5" />
-            <h1 className="font-bold text-slate-900">{room.name}</h1>
-            <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded uppercase">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Live
-            </span>
-          </div>
-        </div>
+    <div className="h-screen flex flex-col overflow-hidden bg-cyber-dark text-cyber-text-primary selection:bg-cyber-cyan selection:text-cyber-dark">
+      {/* Background Effects */}
+      <div className="fixed inset-0 z-0 bg-cyber-gradient opacity-50 pointer-events-none"></div>
+      <div className="fixed inset-0 z-0 scanlines opacity-10 pointer-events-none"></div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={copyRoomCode}
-            className="flex items-center gap-2 px-3 h-8 rounded-md bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
-          >
-            <FiCopy /> {room.code}
-          </button>
-          <div className="flex items-center gap-2 px-3 h-8 rounded-md bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600">
-            <FiUsers /> {participantCount}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
       <Tabs 
         value={activeTab} 
         onValueChange={(val) => {
           setActiveTab(val);
           sessionStorage.setItem(`activeTab_${roomCode}`, val);
         }} 
-        className="flex-1 flex flex-col min-h-0"
+        className="flex-1 flex flex-col min-h-0 relative z-10"
       >
-        <div className="h-11 px-4 border-b flex items-center shrink-0 bg-slate-50/50">
-          <TabsList className="bg-transparent border-none p-0 h-11 flex gap-4">
-            <TabsTrigger value="code" className="rounded-none h-11 px-4 text-xs font-bold border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 transition-all">
-              <FiMonitor className="mr-2" /> Workspace
-            </TabsTrigger>
-            <TabsTrigger value="video" className="rounded-none h-11 px-4 text-xs font-bold border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 transition-all">
-              <FiVideo className="mr-2" /> Conference
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        {/* Header */}
+        <header className="h-14 glassmorphism border-b border-white/10 flex items-center px-4 justify-between shrink-0 relative z-50 overflow-x-auto">
+          <div className="flex items-center gap-4">
+            <Link to="/dashboard">
+              <button className="p-2 text-cyber-text-muted hover:text-cyber-cyan transition-colors group">
+                <FiArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              </button>
+            </Link>
+            <div className="w-px h-6 bg-white/10" />
+            <div className="flex items-center gap-3">
+              <FiTerminal className="text-cyber-cyan w-5 h-5 drop-shadow-[0_0_8px_rgba(0,245,255,0.8)]" />
+              <h1 className="font-bold text-white uppercase tracking-wider">{room.name}</h1>
+              <span className="flex items-center gap-2 text-[10px] font-bold text-cyber-lime border border-cyber-lime/30 bg-cyber-lime/10 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(57,255,20,0.2)] uppercase tracking-widest mr-2 lg:mr-6">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyber-lime animate-pulse shadow-[0_0_5px_#39FF14]" /> Live
+              </span>
 
-        <div className="flex-1 relative overflow-hidden bg-slate-100">
-          <TabsContent value="code" forceMount className="h-full m-0 p-0 data-[state=inactive]:hidden">
-            <div className="h-full flex">
-              <div className="flex-1 p-3">
-                <div className="h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                  <CodeEditor roomId={room._id} socket={socket} userId={user?._id} />
+              <div className="w-px h-6 bg-white/10 hidden md:block" />
+              <TabsList className="bg-transparent border-none p-0 h-14 flex gap-2 ml-2">
+                <TabsTrigger value="code" className="rounded-none h-14 px-3 text-xs font-bold uppercase tracking-widest border-b-2 border-transparent text-cyber-text-muted hover:text-cyber-cyan data-[state=active]:border-cyber-cyan data-[state=active]:bg-transparent data-[state=active]:text-cyber-cyan data-[state=active]:shadow-[0_2px_10px_rgba(0,245,255,0.3)] transition-all">
+                  <FiMonitor className="mr-2" /> Code Editor
+                </TabsTrigger>
+                <TabsTrigger value="video" className="rounded-none h-14 px-3 text-xs font-bold uppercase tracking-widest border-b-2 border-transparent text-cyber-text-muted hover:text-cyber-pink data-[state=active]:border-cyber-pink data-[state=active]:bg-transparent data-[state=active]:text-cyber-pink data-[state=active]:shadow-[0_2px_10px_rgba(255,0,140,0.3)] transition-all">
+                  <FiVideo className="mr-2" /> Video Call
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 hidden md:flex">
+            <button
+              onClick={copyRoomCode}
+              className="flex items-center gap-2 px-3 h-8 rounded bg-cyber-darker border border-cyber-cyan/30 text-xs font-bold text-cyber-cyan hover:bg-cyber-cyan/10 hover:border-cyber-cyan transition-all shadow-[0_0_10px_rgba(0,245,255,0.1)] hover:shadow-[0_0_15px_rgba(0,245,255,0.3)] uppercase tracking-wider"
+            >
+              <FiCopy /> {room.code}
+            </button>
+            <div className="flex items-center gap-2 px-3 h-8 rounded bg-cyber-darker border border-cyber-purple/30 text-xs font-bold text-cyber-purple shadow-[0_0_10px_rgba(176,38,255,0.1)]">
+              <FiUsers /> {participantCount}
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+
+        <div className="flex-1 relative overflow-hidden bg-cyber-dark/50">
+          <TabsContent value="code" forceMount className="w-full h-full md:absolute md:inset-0 m-0 p-0 data-[state=inactive]:hidden overflow-y-auto md:overflow-hidden flex flex-col">
+            <div className="min-h-full md:h-full flex flex-col md:flex-row p-3 gap-3">
+              <div className="h-[480px] md:h-full flex-1 relative shrink-0">
+                <div className="absolute inset-0 rounded-xl neon-border pointer-events-none opacity-50 z-10" />
+                <div className="h-full rounded-xl overflow-hidden glassmorphism bg-cyber-dark">
+                  <CodeEditor roomId={room._id} socket={socket} userId={user?._id} onCodeChange={setCurrentCode} onLanguageChange={setCurrentLanguage} />
                 </div>
               </div>
               
-              <aside className="w-80 lg:w-96 hidden md:flex flex-col p-3 pl-0 gap-4 border-l bg-white shrink-0 overflow-y-auto">
-                <div className="min-h-[450px] flex-1 border rounded-xl overflow-hidden shadow-sm">
+              <aside className="w-full md:w-80 lg:w-96 flex flex-col gap-3 shrink-0 overflow-y-auto">
+                <div className="flex-1 min-h-[300px] rounded-xl overflow-hidden neon-border-pink relative">
                   <ChatPanel roomId={room._id} socket={socket} userId={user?._id} />
                 </div>
                 {room.enable_ai && (
-                  <div className="h-[450px] border rounded-xl overflow-hidden shadow-sm shrink-0">
-                    <AIAssistant roomId={room._id} />
+                  <div className="h-[400px] rounded-xl overflow-hidden neon-border-purple relative shrink-0">
+                    <AIAssistant roomId={room._id} code={currentCode} language={currentLanguage} />
                   </div>
                 )}
                 {room.enable_whiteboard && (
-                  <div className="h-[400px] border rounded-xl overflow-hidden shadow-sm shrink-0">
+                  <div className="h-[400px] rounded-xl overflow-hidden border border-cyber-lime/50 shadow-[0_0_10px_rgba(57,255,20,0.2)] relative shrink-0 glassmorphism">
                     <Whiteboard roomId={room._id} socket={socket} />
                   </div>
                 )}
@@ -162,8 +173,9 @@ export default function RoomPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="video" forceMount className="h-full m-0 p-3 data-[state=inactive]:hidden flex items-center justify-center">
-            <div className="w-full max-w-4xl h-[600px] max-h-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          <TabsContent value="video" forceMount className="w-full h-full md:absolute md:inset-0 m-0 p-0 data-[state=inactive]:hidden flex flex-col">
+            <div className="w-full h-full relative bg-cyber-darker flex flex-col">
+               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 mix-blend-overlay pointer-events-none z-0"></div>
               <VideoConference roomId={room._id} socket={socket} />
             </div>
           </TabsContent>

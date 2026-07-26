@@ -1,4 +1,6 @@
 import Room from '../models/Room.js';
+import CodeSnapshot from '../models/CodeSnapshot.js';
+import Message from '../models/Message.js';
 
 // @desc    Create a new room
 // @route   POST /api/rooms
@@ -71,6 +73,10 @@ export const deleteRoom = async (req, res) => {
         if (room.created_by.toString() !== req.user._id.toString()) {
             return res.status(401).json({ message: 'Not authorized to delete this room' });
         }
+
+        // Cascading delete snapshots and messages for the room
+        await CodeSnapshot.deleteOne({ room_id: req.params.id });
+        await Message.deleteMany({ room_id: req.params.id });
 
         await room.deleteOne();
         res.json({ message: 'Room removed' });

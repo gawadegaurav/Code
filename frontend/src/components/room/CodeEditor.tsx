@@ -3,7 +3,7 @@ import Editor from '@monaco-editor/react';
 import api from '@/lib/api';
 import { Socket } from 'socket.io-client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FiPlay, FiTerminal, FiChevronRight, FiTrash2, FiSquare } from 'react-icons/fi';
+import { FiPlay, FiTerminal, FiTrash2, FiSquare, FiCpu, FiCode } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -14,6 +14,8 @@ interface CodeEditorProps {
   roomId: string;
   socket?: Socket;
   userId?: string;
+  onCodeChange?: (code: string) => void;
+  onLanguageChange?: (language: string) => void;
 }
 
 const LANGUAGES = [
@@ -25,21 +27,27 @@ const LANGUAGES = [
 ];
 
 const DEFAULT_TEMPLATES: Record<string, string> = {
-  javascript: `console.log("Hello, JavaScript!");`,
-  python: `print("Hello, Python!")`,
-  java: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, Java!");\n    }\n}`,
-  cpp: `#include <iostream>\n\nint main() {\n    std::cout << "Hello, C++!" << std::endl;\n    return 0;\n}`,
-  c: `#include <stdio.h>\n\nint main() {\n    printf("Hello, C!\\n");\n    return 0;\n}`,
+  javascript: `console.log("Welcome to Spark OS.");`,
+  python: `print("Welcome to Spark OS.")`,
+  java: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Welcome to Spark OS.");\n    }\n}`,
+  cpp: `#include <iostream>\n\nint main() {\n    std::cout << "Welcome to Spark OS." << std::endl;\n    return 0;\n}`,
+  c: `#include <stdio.h>\n\nint main() {\n    printf("Welcome to Spark OS.\\n");\n    return 0;\n}`,
 };
 
-export function CodeEditor({ roomId, socket, userId }: CodeEditorProps) {
-  const [code, setCode] = useState('// Loading...');
+export function CodeEditor({ roomId, socket, userId, onCodeChange, onLanguageChange }: CodeEditorProps) {
+  const [code, setCode] = useState('// Initializing Code Editor...');
   const [language, setLanguage] = useState('javascript');
-  const [userInput, setUserInput] = useState('');
-  const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
+
+  useEffect(() => {
+    onCodeChange?.(code);
+  }, [code, onCodeChange]);
+
+  useEffect(() => {
+    onLanguageChange?.(language);
+  }, [language, onLanguageChange]);
 
   useEffect(() => {
     const fetchCode = async () => {
@@ -71,10 +79,19 @@ export function CodeEditor({ roomId, socket, userId }: CodeEditorProps) {
           fontSize: 13,
           fontFamily: "'JetBrains Mono', monospace",
           theme: {
-            background: '#ffffff',
-            foreground: '#334155',
-            cursor: '#2563eb',
-            selectionBackground: '#cbd5e1',
+            background: '#0B1020',
+            foreground: '#00F5FF',
+            cursor: '#00F5FF',
+            cursorAccent: '#050816',
+            selectionBackground: 'rgba(0, 245, 255, 0.3)',
+            black: '#000000',
+            red: '#FF008C',
+            green: '#39FF14',
+            yellow: '#F59E0B',
+            blue: '#3B82F6',
+            magenta: '#B026FF',
+            cyan: '#00F5FF',
+            white: '#E5F6FF',
           },
           convertEol: true,
         });
@@ -84,7 +101,10 @@ export function CodeEditor({ roomId, socket, userId }: CodeEditorProps) {
         term.open(terminalRef.current);
         
         // Initial fit and resize listener
-        setTimeout(() => fitAddon.fit(), 100);
+        setTimeout(() => {
+          fitAddon.fit();
+          term.write('\x1b[1;36mTerminal initialized...\x1b[0m\r\n');
+        }, 100);
         const handleResize = () => fitAddon.fit();
         window.addEventListener('resize', handleResize);
 
@@ -92,10 +112,9 @@ export function CodeEditor({ roomId, socket, userId }: CodeEditorProps) {
 
         term.onData((data) => {
           socket.emit("terminal-input", data);
-          // Local echo for visibility
           if (data === "\r") {
             term.write("\r\n");
-          } else if (data === "\x7f") { // Backspace
+          } else if (data === "\x7f") {
             term.write("\b \b");
           } else {
             term.write(data);
@@ -109,7 +128,6 @@ export function CodeEditor({ roomId, socket, userId }: CodeEditorProps) {
           }
         });
         
-        // Cleanup listener on unmount
         (term as any)._handleResize = handleResize;
       }
     }
@@ -144,35 +162,39 @@ export function CodeEditor({ roomId, socket, userId }: CodeEditorProps) {
   };
 
   const runCode = () => {
-    if (!socket) return toast.error("Socket not connected");
+    if (!socket) return toast.error("Connection required");
     setIsRunning(true);
     xtermRef.current?.clear();
     xtermRef.current?.focus();
+    xtermRef.current?.write('\x1b[1;32m> Running code...\x1b[0m\r\n');
     socket.emit("run-code", { language, code });
   };
 
   const stopCode = () => {
     if (socket) {
       socket.emit("stop-code");
+      xtermRef.current?.write('\r\n\x1b[1;31m> Process stopped.\x1b[0m\r\n');
     }
     setIsRunning(false);
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-cyber-dark relative">
       {/* Toolbar */}
-      <div className="h-12 border-b flex items-center justify-between px-4 bg-slate-50">
+      <div className="h-12 border-b border-cyber-cyan/30 flex items-center justify-between px-4 bg-cyber-darker/80 backdrop-blur z-10">
         <div className="flex items-center gap-4">
           <Select value={language} onValueChange={updateLanguage}>
-            <SelectTrigger className="w-40 h-8 bg-white text-xs">
+            <SelectTrigger className="w-44 h-8 bg-cyber-dark border-cyber-cyan/50 text-cyber-cyan text-xs font-mono uppercase tracking-widest shadow-[0_0_10px_rgba(0,245,255,0.1)] hover:border-cyber-cyan focus:ring-1 focus:ring-cyber-cyan">
               <div className="flex items-center gap-2">
-                <FiTerminal className="text-blue-600" />
+                <FiCode className="text-cyber-cyan drop-shadow-[0_0_5px_rgba(0,245,255,0.8)]" />
                 <SelectValue />
               </div>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-cyber-dark border-cyber-cyan/50 text-cyber-cyan font-mono text-xs uppercase tracking-wider">
               {LANGUAGES.map(lang => (
-                <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
+                <SelectItem key={lang.value} value={lang.value} className="hover:bg-cyber-cyan/20 focus:bg-cyber-cyan/20 cursor-pointer">
+                  {lang.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -180,48 +202,63 @@ export function CodeEditor({ roomId, socket, userId }: CodeEditorProps) {
 
         <button
           onClick={isRunning ? stopCode : runCode}
-          className={`${isRunning ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} text-white text-xs font-bold px-4 h-8 rounded-md flex items-center gap-2 disabled:opacity-50 transition-colors`}
+          className={`text-xs font-bold font-mono tracking-widest uppercase px-6 h-8 rounded flex items-center gap-2 transition-all duration-300 border ${
+            isRunning 
+              ? 'bg-cyber-pink/20 text-cyber-pink border-cyber-pink hover:bg-cyber-pink hover:text-white shadow-[0_0_15px_rgba(255,0,140,0.4)]' 
+              : 'bg-cyber-cyan/20 text-cyber-cyan border-cyber-cyan hover:bg-cyber-cyan hover:text-cyber-dark shadow-[0_0_15px_rgba(0,245,255,0.4)]'
+          }`}
         >
           {isRunning ? <FiSquare className="text-[10px]" /> : <FiPlay />}
-          {isRunning ? 'STOP' : 'RUN'}
+          {isRunning ? 'Stop' : 'Run'}
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex-1 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 relative">
+        <div className="flex-1 overflow-hidden relative">
+          {/* Animated scanline overlay for editor */}
+          <div className="absolute inset-0 pointer-events-none scanlines opacity-10 z-10"></div>
           <Editor
             height="100%"
             language={language}
             value={code}
             onChange={(val) => updateCode(val || '')}
-            theme="light"
+            theme="vs-dark"
             options={{
-              minimap: { enabled: false },
+              minimap: { enabled: true, renderCharacters: false },
               fontSize: 14,
               fontFamily: "'JetBrains Mono', monospace",
               automaticLayout: true,
               scrollBeyondLastLine: false,
-              padding: { top: 10 },
+              padding: { top: 16, bottom: 16 },
+              cursorBlinking: 'smooth',
+              cursorStyle: 'block',
+              renderLineHighlight: 'all',
             }}
           />
         </div>
 
         {/* Real-time Terminal */}
-        <div className="h-64 border-t flex flex-col bg-white">
-          <div className="h-8 border-b border-slate-200 flex items-center justify-between px-4 bg-slate-50">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-              <FiTerminal className="text-blue-600" /> Interactive Terminal
+        <div className="h-64 border-t border-cyber-cyan/30 flex flex-col bg-cyber-darker relative z-10">
+          <div className="h-8 border-b border-cyber-cyan/20 flex items-center justify-between px-4 bg-cyber-dark/80">
+            <span className="text-[10px] font-bold text-cyber-cyan uppercase tracking-widest font-mono flex items-center gap-2 drop-shadow-[0_0_5px_rgba(0,245,255,0.5)]">
+              <FiTerminal /> Terminal
             </span>
             <div className="flex gap-4">
               <button 
-                onClick={() => xtermRef.current?.clear()} 
-                className="text-[10px] font-bold text-slate-500 hover:text-white flex items-center gap-1"
+                onClick={() => {
+                  xtermRef.current?.clear();
+                  xtermRef.current?.write('\x1b[1;36mTerminal initialized...\x1b[0m\r\n');
+                }} 
+                className="text-[9px] font-bold text-cyber-pink hover:text-white uppercase tracking-widest font-mono flex items-center gap-1 transition-colors"
               >
-                <FiTrash2 /> CLEAR
+                <FiTrash2 /> Clear
               </button>
             </div>
           </div>
-          <div className="flex-1 p-2 overflow-hidden" ref={terminalRef} />
+          <div className="flex-1 p-2 overflow-hidden relative">
+            <div className="absolute inset-0 pointer-events-none scanlines opacity-20 z-10"></div>
+            <div className="h-full w-full" ref={terminalRef} />
+          </div>
         </div>
       </div>
     </div>

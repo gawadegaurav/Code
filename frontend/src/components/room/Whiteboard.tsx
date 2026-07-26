@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
-import { FiEdit3, FiTrash2 } from 'react-icons/fi';
+import { FiEdit3, FiTrash2, FiGrid } from 'react-icons/fi';
 import { LuEraser } from 'react-icons/lu';
 
 interface WhiteboardProps {
@@ -12,7 +12,7 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen');
-  const [color] = useState('#2563eb'); // blue-600
+  const [color] = useState('#39FF14'); // cyber-lime
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
   const getCtx = useCallback(() => {
@@ -28,10 +28,16 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
     ctx.lineTo(x, y);
-    ctx.strokeStyle = drawTool === 'eraser' ? '#ffffff' : drawColor;
-    ctx.lineWidth = drawTool === 'eraser' ? 20 : 3;
+    ctx.strokeStyle = drawTool === 'eraser' ? '#0B1020' : drawColor;
+    ctx.lineWidth = drawTool === 'eraser' ? 30 : 4;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    if (drawTool === 'pen') {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = drawColor;
+    } else {
+      ctx.shadowBlur = 0;
+    }
     ctx.stroke();
   }, [getCtx]);
 
@@ -42,14 +48,26 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
     const resizeCanvas = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
+
+      // Save current content to temp canvas before resizing
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        tempCtx.drawImage(canvas, 0, 0);
+      }
+
       const rect = parent.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.height;
       
       const ctx = getCtx();
       if (ctx) {
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#0B1020'; // background
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Draw the content back
+        ctx.drawImage(tempCanvas, 0, 0);
       }
     };
 
@@ -63,7 +81,7 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
       socket.on('clear-whiteboard', () => {
         const ctx = getCtx();
         if (ctx && canvas) {
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = '#0B1020';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
       });
@@ -115,34 +133,50 @@ export function Whiteboard({ roomId, socket }: WhiteboardProps) {
     const ctx = getCtx();
     const canvas = canvasRef.current;
     if (!ctx || !canvas) return;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#0B1020';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (socket) socket.emit('clear-whiteboard', roomId);
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="h-10 border-b px-4 flex items-center justify-between bg-slate-50">
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-          <FiEdit3 /> Canvas
+    <div className="flex flex-col h-full bg-cyber-dark/80 relative">
+      <div className="h-10 border-b border-cyber-lime/30 px-4 flex items-center justify-between bg-cyber-darker/50 z-10">
+        <span className="text-[10px] font-bold text-cyber-lime uppercase tracking-widest flex items-center gap-2 drop-shadow-[0_0_8px_rgba(57,255,20,0.8)]">
+          <FiEdit3 /> Whiteboard
         </span>
         <div className="flex items-center gap-2">
-          <button onClick={() => setTool('pen')} className={`p-1.5 rounded ${tool === 'pen' ? 'text-blue-600 bg-white shadow-sm' : 'text-slate-400'}`}>
+          <button 
+            onClick={() => setTool('pen')} 
+            className={`p-1.5 rounded transition-all ${tool === 'pen' ? 'text-cyber-dark bg-cyber-lime shadow-[0_0_10px_rgba(57,255,20,0.8)]' : 'text-cyber-lime hover:bg-cyber-lime/20'}`}
+          >
             <FiEdit3 className="w-4 h-4" />
           </button>
-          <button onClick={() => setTool('eraser')} className={`p-1.5 rounded ${tool === 'eraser' ? 'text-blue-600 bg-white shadow-sm' : 'text-slate-400'}`}>
+          <button 
+            onClick={() => setTool('eraser')} 
+            className={`p-1.5 rounded transition-all ${tool === 'eraser' ? 'text-cyber-dark bg-cyber-lime shadow-[0_0_10px_rgba(57,255,20,0.8)]' : 'text-cyber-lime hover:bg-cyber-lime/20'}`}
+          >
             <LuEraser className="w-4 h-4" />
           </button>
-          <div className="w-px h-4 bg-slate-200 mx-1" />
-          <button onClick={clearCanvas} className="p-1.5 text-slate-400 hover:text-red-600">
+          <div className="w-px h-4 bg-cyber-lime/30 mx-1" />
+          <button onClick={clearCanvas} className="p-1.5 text-cyber-pink hover:bg-cyber-pink/20 hover:shadow-[0_0_10px_rgba(255,0,140,0.5)] rounded transition-all">
             <FiTrash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
-      <div className="flex-1 relative bg-white">
+      <div className="flex-1 relative bg-transparent overflow-hidden">
+        {/* Cyberpunk Grid Background */}
+        <div 
+          className="absolute inset-0 pointer-events-none opacity-20"
+          style={{
+            backgroundImage: 'linear-gradient(#39FF14 1px, transparent 1px), linear-gradient(90deg, #39FF14 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+            backgroundPosition: 'center center'
+          }}
+        />
+        
         <canvas
           ref={canvasRef}
-          className="cursor-crosshair touch-none"
+          className="cursor-crosshair touch-none absolute inset-0 z-10"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
