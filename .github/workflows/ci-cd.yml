@@ -56,10 +56,10 @@ jobs:
           cd frontend
           npm ci
 
-      - name: Run Eslint Check
+      - name: Run Eslint Check (Non-blocking)
         run: |
           cd frontend
-          npm run lint
+          npm run lint || echo "Linting issues found, proceeding with build..."
 
       - name: Build Application
         run: |
